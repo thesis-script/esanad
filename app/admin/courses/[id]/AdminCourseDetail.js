@@ -12,14 +12,13 @@ const QuillEditor = dynamic(() => import('@/components/admin/QuillEditor'), {
   ),
 });
 
-const COLORS = ['#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444','#06b6d4','#f97316','#84cc16'];
-const LEVELS = ['بكالوريا','متقدم','متوسط','مبتدئ'];
+const COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#84cc16'];
+const LEVELS = ['بكالوريا', 'متقدم', 'متوسط', 'مبتدئ'];
 
 function stripHtml(html) {
   return html?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || '';
 }
 
-// ─── Small shared Modal shell ─────────────────────────────────────────────────
 function ModalShell({ title, onClose, children, wide }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -51,12 +50,28 @@ export default function AdminCourseDetail({ course: initialCourse, categories })
   // ── Course edit modal ──────────────────────────────────────────────────────
   const [showEditCourse, setShowEditCourse] = useState(false);
   const [courseForm, setCourseForm] = useState({
-    title: course.title, description: course.description || '',
-    category_id: course.category_id, cover_color: course.cover_color || '#3b82f6',
-    level: course.level || 'بكالوريا', is_published: course.is_published !== false,
+    title: course.title,
+    description: course.description || '',
+    category_id: course.category_id,
+    cover_color: course.cover_color || '#3b82f6',
+    level: course.level || 'بكالوريا',
+    is_published: course.is_published !== false,
+    pdf_url: course.pdf_url || '',
   });
   const [courseLoading, setCourseLoading] = useState(false);
   const [courseError, setCourseError] = useState('');
+  const [pdfUploading, setPdfUploading] = useState(false);
+
+  async function uploadPdf(file) {
+    if (!file) return;
+    setPdfUploading(true);
+    const fd = new FormData();
+    fd.append('pdf', file);
+    const res = await fetch('/api/courses/upload-pdf', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.url) setCourseForm(p => ({ ...p, pdf_url: data.url }));
+    setPdfUploading(false);
+  }
 
   async function saveCourse(e) {
     e.preventDefault();
@@ -91,7 +106,6 @@ export default function AdminCourseDetail({ course: initialCourse, categories })
     setEditorKey(k => k + 1);
     setSectionError('');
     setShowSectionForm(true);
-    // Scroll to form
     setTimeout(() => document.getElementById('section-form')?.scrollIntoView({ behavior: 'smooth' }), 100);
   }
 
@@ -205,6 +219,27 @@ export default function AdminCourseDetail({ course: initialCourse, categories })
             <div className={styles.courseStats}>
               <span>📝 {sections.length} عنوان</span>
             </div>
+
+            {/* ── PDF link ── */}
+            {course.pdf_url && (
+              <div style={{ marginTop: 12 }}>
+                <a
+                  href={course.pdf_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: `${course.cover_color}18`, color: course.cover_color,
+                    border: `1.5px solid ${course.cover_color}55`,
+                    borderRadius: 8, padding: '6px 14px',
+                    fontFamily: 'Cairo,sans-serif', fontWeight: 700,
+                    textDecoration: 'none', fontSize: '0.9rem',
+                  }}
+                >
+                  📄 عرض ملف PDF
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -357,6 +392,39 @@ export default function AdminCourseDetail({ course: initialCourse, categories })
                   <div style={{ width: 56, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${courseForm.cover_color},${courseForm.cover_color}66)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📖</div>
                 </div>
               </div>
+
+              {/* ── PDF Upload ── */}
+              <div className="form-group">
+                <label className="form-label">ملف PDF (اختياري)</label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="form-input"
+                  style={{ cursor: 'pointer' }}
+                  onChange={async e => {
+                    const file = e.target.files[0];
+                    if (file) await uploadPdf(file);
+                  }}
+                />
+                {pdfUploading && (
+                  <p style={{ color: 'var(--text-muted)', marginTop: 6, fontSize: '0.85rem' }}>جارٍ رفع الملف...</p>
+                )}
+                {courseForm.pdf_url && !pdfUploading && (
+                  <p style={{ marginTop: 6, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <a href={courseForm.pdf_url} target="_blank" rel="noreferrer" style={{ color: 'green' }}>
+                      ✅ معاينة الملف الحالي
+                    </a>
+                    <button
+                      type="button"
+                      style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', fontSize: '0.85rem' }}
+                      onClick={() => setCourseForm(p => ({ ...p, pdf_url: '' }))}
+                    >
+                      ✕ حذف الملف
+                    </button>
+                  </p>
+                )}
+              </div>
+
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                 <input type="checkbox" checked={courseForm.is_published}
                   onChange={e => setCourseForm(p => ({ ...p, is_published: e.target.checked }))}
@@ -365,8 +433,8 @@ export default function AdminCourseDetail({ course: initialCourse, categories })
               </label>
             </div>
             <div className="modal-footer">
-              <button type="submit" className="btn btn-primary" disabled={courseLoading}>
-                {courseLoading ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}
+              <button type="submit" className="btn btn-primary" disabled={courseLoading || pdfUploading}>
+                {courseLoading ? 'جارٍ الحفظ...' : pdfUploading ? 'جارٍ رفع الملف...' : 'حفظ التعديلات'}
               </button>
               <button type="button" className="btn btn-ghost" onClick={() => setShowEditCourse(false)}>إلغاء</button>
             </div>
