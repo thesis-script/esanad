@@ -17,20 +17,24 @@ export async function POST(request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // Save to public/uploads/pdfs/
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'pdfs');
-    await mkdir(uploadDir, { recursive: true });
-
     const safeName = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._\u0600-\u06FF-]/g, '');
     const filename = `${Date.now()}-${safeName}`;
-    const filepath = path.join(uploadDir, filename);
 
-    await writeFile(filepath, buffer);
+    // ── PRODUCTION: Vercel Blob ──────────────────────────────────────
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const { put } = await import('@vercel/blob');
+      const blob = await put(`courses/${filename}`, buffer, {
+        access: 'public',
+        contentType: 'application/pdf',
+      });
+      return NextResponse.json({ url: blob.url }, { status: 201 });
+    }
 
-    // Return the public URL path
-    const url = `/uploads/pdfs/${filename}`;
-    return NextResponse.json({ url }, { status: 201 });
+    // ── DEVELOPMENT: Local folder ────────────────────────────────────
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'pdfs');
+    await mkdir(uploadDir, { recursive: true });
+    await writeFile(path.join(uploadDir, filename), buffer);
+    return NextResponse.json({ url: `/uploads/pdfs/${filename}` }, { status: 201 });
 
   } catch (error) {
     console.error('PDF upload error:', error.message);
