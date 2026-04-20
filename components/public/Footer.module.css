@@ -100,3 +100,18 @@
   .grid { grid-template-columns: 1fr; }
   .brand { grid-column: span 1; }
 }
+
+
+.preparationFooter {
+  text-align: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1rem;
+}
+
+.preparationFooter p {
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.4;
+}

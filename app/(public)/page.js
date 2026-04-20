@@ -25,6 +25,10 @@ export default async function HomePage() {
         <div className={styles.heroBg}></div>
         <div className="container">
           <div className={styles.heroContent}>
+            <div className={styles.preparationInfo}>
+              <p className={styles.preparationText}>إعداد الدكتورة سارة جابري</p>
+              <p className={styles.preparationDetails}>أستاذة مادة اللغة العربية وآدابها بثانوية أبي عبيدة بن الجراح تبسة</p>
+            </div>
             <h1 className={styles.heroTitle}>
               تعلّم الأدب العربي
               <br />
@@ -66,6 +70,7 @@ export default async function HomePage() {
           </svg>
         </div>
       </section>
+
 
       {/* Categories */}
       <section className={styles.section}>
